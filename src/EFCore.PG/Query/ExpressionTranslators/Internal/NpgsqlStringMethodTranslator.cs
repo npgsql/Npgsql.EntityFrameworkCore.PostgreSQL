@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using JetBrains.Annotations;
@@ -8,6 +9,7 @@ using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.Mapping;
 using static Npgsql.EntityFrameworkCore.PostgreSQL.Utilities.Statics;
 
 namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.ExpressionTranslators.Internal
@@ -53,7 +55,19 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.ExpressionTranslators.Inte
         [NotNull] static readonly MethodInfo PadRightWithChar = typeof(string).GetRuntimeMethod(nameof(string.PadRight), new[] { typeof(int), typeof(char) });
         [NotNull] static readonly MethodInfo ToLower = typeof(string).GetRuntimeMethod(nameof(string.ToLower), Array.Empty<Type>());
         [NotNull] static readonly MethodInfo ToUpper = typeof(string).GetRuntimeMethod(nameof(string.ToUpper), Array.Empty<Type>());
-
+        [NotNull] static readonly MethodInfo JoinString = typeof(string).GetRuntimeMethod(nameof(string.Join), new[] { typeof(string), typeof(string[]) });
+        [NotNull] static readonly MethodInfo JoinStringCharSep = typeof(string).GetRuntimeMethod(nameof(string.Join), new[] { typeof(char), typeof(string[]) });
+        [NotNull] static readonly MethodInfo JoinStringIEnumerable = typeof(string).GetRuntimeMethod(nameof(string.Join), new[] { typeof(string), typeof(IEnumerable<string>)});
+        [NotNull] static readonly MethodInfo JoinGeneric = typeof(string)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
+            .Select(x => new { mi = x, pi = x.GetParameters() })
+            .Single(x => x.mi.Name == nameof(string.Join) && x.pi.Length == 2 && x.pi[0].ParameterType == typeof(string)
+                         && x.mi.IsGenericMethod).mi;
+        [NotNull] static readonly MethodInfo JoinGenericCharSep = typeof(string)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
+            .Select(x => new { mi = x, pi = x.GetParameters() })
+            .Single(x => x.mi.Name == nameof(string.Join) && x.pi.Length == 2 && x.pi[0].ParameterType == typeof(char)
+                         && x.mi.IsGenericMethod).mi;
         #endregion
 
         public NpgsqlStringMethodTranslator(
@@ -244,6 +258,21 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.ExpressionTranslators.Inte
                 return TranslateStartsEndsWith(instance, arguments[0], true);
             if (method == EndsWith)
                 return TranslateStartsEndsWith(instance, arguments[0], false);
+
+            if (method == JoinStringIEnumerable ||
+                method == JoinString || method == JoinStringCharSep ||
+                method.IsClosedFormOf(JoinGeneric) || method.IsClosedFormOf(JoinGenericCharSep))
+            {
+                var array = arguments[1];
+
+                if (array.TypeMapping is NpgsqlArrayTypeMapping || array.Type.IsArrayOrGenericList())
+                    return _sqlExpressionFactory.Function(
+                        "array_to_string",
+                        new[] { array, arguments[0], _sqlExpressionFactory.Constant("") },
+                        nullable: true,
+                        argumentsPropagateNullability: TrueArrays[3],
+                        typeof(string));
+            }
 
             return null;
         }
