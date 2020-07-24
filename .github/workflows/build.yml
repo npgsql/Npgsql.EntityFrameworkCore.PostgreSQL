@@ -75,7 +75,7 @@ jobs:
         shell: bash
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@1.4.0
+        uses: actions/setup-dotnet@v1
 
       - name: Test
         run: dotnet test --configuration Debug --logger "GitHubActions;report-warnings=false"
@@ -91,7 +91,7 @@ jobs:
         uses: actions/checkout@v1
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@1.4.0
+        uses: actions/setup-dotnet@v1
 
       - name: Pack NuGet packages (CI versions)
         if: startsWith(github.ref, 'refs/heads/')
