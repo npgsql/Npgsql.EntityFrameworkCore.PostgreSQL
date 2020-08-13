@@ -27,20 +27,8 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.TestModels.Northwind
             modelBuilder.Entity<Order>()
                 .Property(o => o.EmployeeID)
                 .HasColumnType("int4");
-            modelBuilder.Entity<OrderDetail>()
-                .Property(od => od.UnitPrice)
-                .HasColumnType("money");
 
-            modelBuilder.Entity<Product>(
-                b =>
-                {
-                    b.Property(p => p.UnitPrice).HasColumnType("money");
-                    b.Property(p => p.UnitsInStock).HasColumnType("int2");
-                });
-
-            modelBuilder.Entity<MostExpensiveProduct>()
-                .Property(p => p.UnitPrice)
-                .HasColumnType("money");
+            modelBuilder.Entity<Product>().Property(p => p.UnitsInStock).HasColumnType("int2");
 
 #pragma warning disable CS0618 // Type or member is obsolete
             modelBuilder.Query<CustomerView>().HasNoKey().ToQuery(

@@ -459,7 +459,7 @@ WHERE m.""TimeSpanAsTime"" = @__timeSpan_0");
 @p8='2016-01-02T11:11:12' (DbType = DateTimeOffset)
 @p9='0001-01-01T12:00:00.0000000+02:00' (DbType = Object)
 @p10='101.7'
-@p11='81.1'
+@p11='81.1' (DbType = Currency)
 @p12='103.9'
 @p13='System.Collections.Generic.Dictionary`2[System.String,System.String]' (Nullable = false) (DbType = Object)
 @p14='85.5'
@@ -869,7 +869,7 @@ WHERE m.""TimeSpanAsTime"" = @__timeSpan_0");
         {
             using var context = CreateContext();
 
-            // PostgreSQL SUM() returns numeric for bigint input, bigint for int/smallint inuts.
+            // PostgreSQL SUM() returns numeric for bigint input, bigint for int/smallint ints.
             // Make sure the proper conversion is done
             var sum1 = context.Set<MappedDataTypes>().Sum(m => m.LongAsBigint);
             var sum2 = context.Set<MappedDataTypes>().Sum(m => m.Int);
@@ -884,6 +884,23 @@ FROM ""MappedDataTypes"" AS m",
                 //
                 @"SELECT SUM(CAST(m.""ShortAsSmallint"" AS integer))::INT
 FROM ""MappedDataTypes"" AS m");
+        }
+
+        [ConditionalFact]
+        public void Money_compare_constant()
+        {
+            using var context = CreateContext();
+
+            _ = context.Set<MappedDataTypes>().Where(m => m.DecimalAsMoney > 3).ToList();
+        }
+
+        [ConditionalFact]
+        public void Money_compare_parameter()
+        {
+            using var context = CreateContext();
+
+            var money = 3m;
+            _ = context.Set<MappedDataTypes>().Where(m => m.DecimalAsMoney > money).ToList();
         }
 
         void AssertSql(params string[] expected)
