@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -110,7 +111,21 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.Internal
         protected override Expression VisitCrossApply(CrossApplyExpression crossApplyExpression)
         {
             Sql.Append("JOIN LATERAL ");
-            Visit(crossApplyExpression.Table);
+
+            if (crossApplyExpression.Table is TableExpression table)
+            {
+                // PostgreSQL doesn't support LATERAL JOIN over table, and it doesn't really make sense to do it - but EF Core
+                // will sometimes generate that. #1560
+                Sql
+                    .Append("(SELECT * FROM ")
+                    .Append(_sqlGenerationHelper.DelimitIdentifier(table.Name, table.Schema))
+                    .Append(")")
+                    .Append(AliasSeparator)
+                    .Append(_sqlGenerationHelper.DelimitIdentifier(table.Alias));
+            }
+            else
+                Visit(crossApplyExpression.Table);
+
             Sql.Append(" ON TRUE");
             return crossApplyExpression;
         }
@@ -118,7 +133,21 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.Internal
         protected override Expression VisitOuterApply(OuterApplyExpression outerApplyExpression)
         {
             Sql.Append("LEFT JOIN LATERAL ");
-            Visit(outerApplyExpression.Table);
+
+            if (outerApplyExpression.Table is TableExpression table)
+            {
+                // PostgreSQL doesn't support LATERAL JOIN over table, and it doesn't really make sense to do it - but EF Core
+                // will sometimes generate that. #1560
+                Sql
+                    .Append("(SELECT * FROM ")
+                    .Append(_sqlGenerationHelper.DelimitIdentifier(table.Name, table.Schema))
+                    .Append(")")
+                    .Append(AliasSeparator)
+                    .Append(_sqlGenerationHelper.DelimitIdentifier(table.Alias));
+            }
+            else
+                Visit(outerApplyExpression.Table);
+
             Sql.Append(" ON TRUE");
             return outerApplyExpression;
         }

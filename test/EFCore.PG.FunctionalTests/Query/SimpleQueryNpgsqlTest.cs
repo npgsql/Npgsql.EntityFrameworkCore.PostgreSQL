@@ -357,6 +357,20 @@ WHERE c.""Address"" ILIKE ALL (@__collection_0)");
 
         #endregion Any/All Like
 
+        [ConditionalFact] // #1560
+        public async Task Lateral_join_with_table_is_rewritten_with_subquery()
+        {
+            await using var ctx = CreateContext();
+
+            _ = await ctx.Customers.Select(c1 => ctx.Customers.Select(c2 => c2.ContactName).ToList()).ToListAsync();
+
+            AssertSql(
+                @"SELECT c.""CustomerID"", c0.""ContactName"", c0.""CustomerID""
+FROM ""Customers"" AS c
+LEFT JOIN LATERAL (SELECT * FROM ""Customers"") AS c0 ON TRUE
+ORDER BY c.""CustomerID"" NULLS FIRST, c0.""CustomerID"" NULLS FIRST");
+        }
+
         #region Helpers
 
         void AssertSql(params string[] expected)
