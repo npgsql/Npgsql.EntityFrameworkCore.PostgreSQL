@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reflection;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore;
@@ -30,14 +30,25 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.ExpressionTranslators.Inte
             IDiagnosticsLogger<DbLoggerCategory.Query> logger)
         {
             var type = member.DeclaringType;
-            if (type != typeof(DateTime) && type != typeof(NpgsqlDateTime) && type != typeof(NpgsqlDate))
+            if (type != typeof(DateTime) && type != typeof(DateTimeOffset) && type != typeof(NpgsqlDateTime) && type != typeof(NpgsqlDate))
                 return null;
 
             return member.Name switch
             {
                 nameof(DateTime.Now)       => Now(),
-                nameof(DateTime.UtcNow)    =>
-                    _sqlExpressionFactory.AtTimeZone(Now(), _sqlExpressionFactory.Constant("UTC"), returnType),
+                // Not supporting DateTimeOffset.UtcNow, as there is no valid use-case for it.
+                // SELECTing it into .NET via a query can only result in an incorrect value, as Npgsql translates "TIMESTAMP WITH TIME ZONE" to NpgsqlDateTime,
+                //   ignoring the offset, at which point it becomes impossible for EF to know what the offset is supposed to be, which is why we just always assume it's local,
+                //   which in this case will always be incorrect.
+                // When INSERTing the value into a table, PostgreSQL converts the value to UTC and drops the offset info, so there's no point in using UtcNow over Now.
+                // When using the value in a WHERE clause, again, there's no point in using UtcNow over Now, because PostgreSQL will properly adjust for offsets
+                //   in comparison and arithmetic operations.
+                nameof(DateTime.UtcNow) => (member.DeclaringType != typeof(DateTimeOffset))
+                    ? _sqlExpressionFactory.AtTimeZone(
+                        Now(),
+                        _sqlExpressionFactory.Constant("UTC"),
+                        returnType)
+                    : null,
 
                 nameof(DateTime.Today)     => _sqlExpressionFactory.Function(
                     "date_trunc",
@@ -74,6 +85,8 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.ExpressionTranslators.Inte
 
                 // TODO: Should be possible
                 nameof(DateTime.Ticks) => null,
+
+                nameof(DateTimeOffset.DateTime) => _sqlExpressionFactory.Convert(instance, typeof(DateTime)),
 
                 _ => null
             };

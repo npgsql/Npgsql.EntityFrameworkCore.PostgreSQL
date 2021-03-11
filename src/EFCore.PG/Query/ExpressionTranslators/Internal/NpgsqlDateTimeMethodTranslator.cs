@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Query.Internal;
 
 namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.ExpressionTranslators.Internal
 {
@@ -17,7 +18,7 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.ExpressionTranslators.Inte
     public class NpgsqlDateTimeMethodTranslator : IMethodCallTranslator
     {
         /// <summary>
-        /// The mapping of supported method translations.
+        /// The mapping of supported AddXXX() method translations.
         /// </summary>
         [NotNull] static readonly Dictionary<MethodInfo, string> MethodInfoDatePartMapping = new()
         {
@@ -35,6 +36,17 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.ExpressionTranslators.Inte
             { typeof(DateTimeOffset).GetRuntimeMethod(nameof(DateTimeOffset.AddMinutes), new[] { typeof(double) }), "mins" },
             { typeof(DateTimeOffset).GetRuntimeMethod(nameof(DateTimeOffset.AddSeconds), new[] { typeof(double) }), "secs" },
             //{ typeof(DateTimeOffset).GetRuntimeMethod(nameof(DateTimeOffset.AddMilliseconds), new[] { typeof(double) }), "milliseconds" }
+        };
+
+        /// <summary>
+        /// The mapping of supported ToUniversalTime() method translations.
+        /// </summary>
+        [NotNull] static readonly HashSet<MethodInfo> MethodInfoToUniversalTime = new HashSet<MethodInfo>
+        {
+            typeof(DateTime).GetRuntimeMethod(nameof(DateTime.ToUniversalTime), Type.EmptyTypes),
+            // Supported for the sake of chaining with other members within a query, should never be directly SELECTed into .NET.
+            //   It WILL result in a bogus value.
+            typeof(DateTimeOffset).GetRuntimeMethod(nameof(DateTimeOffset.ToUniversalTime), Type.EmptyTypes)
         };
 
         readonly ISqlExpressionFactory _sqlExpressionFactory;
@@ -55,14 +67,19 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.ExpressionTranslators.Inte
 
         /// <inheritdoc />
         public virtual SqlExpression Translate(
-            SqlExpression instance,
-            MethodInfo method,
-            IReadOnlyList<SqlExpression> arguments,
-            IDiagnosticsLogger<DbLoggerCategory.Query> logger)
-        {
-            if (!MethodInfoDatePartMapping.TryGetValue(method, out var datePart))
-                return null;
+                SqlExpression instance,
+                MethodInfo method,
+                IReadOnlyList<SqlExpression> arguments,
+                IDiagnosticsLogger<DbLoggerCategory.Query> logger)
+            => method switch
+            {
+                _ when MethodInfoDatePartMapping.TryGetValue(method, out var datePart)  => TranslateAddInterval(instance, arguments, datePart),
+                _ when MethodInfoToUniversalTime.Contains(method)                       => TranslateToUniversalTime(instance, method.ReturnType),
+                _                                                                       => null
+            };
 
+        private SqlExpression TranslateAddInterval(SqlExpression instance, IReadOnlyList<SqlExpression> arguments, string datePart)
+        {
             var interval = arguments[0];
 
             if (instance is null || interval is null)
@@ -102,5 +119,13 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.ExpressionTranslators.Inte
 
             return _sqlExpressionFactory.Add(instance, interval, instance.TypeMapping);
         }
+
+        private SqlExpression TranslateToUniversalTime(SqlExpression instance, Type returnType)
+            => (_sqlExpressionFactory is NpgsqlSqlExpressionFactory npgsqlSqlExpressionFactory)
+                ? npgsqlSqlExpressionFactory.AtTimeZone(
+                    instance,
+                    _sqlExpressionFactory.Constant("UTC"),
+                    returnType)
+                : null;
     }
 }
