@@ -31,12 +31,14 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal
         readonly PeriodIntervalMapping _periodInterval = new();
         readonly DurationIntervalMapping _durationInterval = new();
 
+
         readonly NpgsqlRangeTypeMapping _timestampLocalDateTimeRange;
         readonly NpgsqlRangeTypeMapping _timestampInstantRange;
         readonly NpgsqlRangeTypeMapping _timestamptzInstantRange;
         readonly NpgsqlRangeTypeMapping _timestamptzZonedDateTimeRange;
         readonly NpgsqlRangeTypeMapping _timestamptzOffsetDateTimeRange;
         readonly NpgsqlRangeTypeMapping _dateRange;
+        readonly DateIntervalMapping _dateInterval = new();
 
         #endregion
 
@@ -86,7 +88,9 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal
                 { typeof(NpgsqlRange<LocalDateTime>), _timestampLocalDateTimeRange },
                 { typeof(NpgsqlRange<ZonedDateTime>), _timestamptzZonedDateTimeRange },
                 { typeof(NpgsqlRange<LocalDate>), _dateRange },
-                { typeof(NpgsqlRange<OffsetDateTime>), _timestamptzOffsetDateTimeRange }
+                { typeof(NpgsqlRange<OffsetDateTime>), _timestamptzOffsetDateTimeRange },
+
+                { typeof(DateInterval), _dateInterval},
             };
 
             StoreTypeMappings = new ConcurrentDictionary<string, RelationalTypeMapping[]>(storeTypeMappings, StringComparer.OrdinalIgnoreCase);

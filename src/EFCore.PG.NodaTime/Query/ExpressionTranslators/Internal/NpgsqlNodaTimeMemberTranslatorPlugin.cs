@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
+using Microsoft.EntityFrameworkCore.Storage;
 using NodaTime;
 
 // ReSharper disable once CheckNamespace
@@ -19,11 +20,13 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime
     /// </remarks>
     public class NpgsqlNodaTimeMemberTranslatorPlugin : IMemberTranslatorPlugin
     {
-        public NpgsqlNodaTimeMemberTranslatorPlugin([NotNull] ISqlExpressionFactory sqlExpressionFactory)
+        public NpgsqlNodaTimeMemberTranslatorPlugin(
+            [NotNull] IRelationalTypeMappingSource typeMappingSource,
+            [NotNull] ISqlExpressionFactory sqlExpressionFactory)
         {
             Translators = new IMemberTranslator[]
             {
-                new NpgsqlNodaTimeMemberTranslator(sqlExpressionFactory),
+                new NpgsqlNodaTimeMemberTranslator(typeMappingSource, sqlExpressionFactory),
             };
         }
 
@@ -39,15 +42,20 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime
     public class NpgsqlNodaTimeMemberTranslator : IMemberTranslator
     {
         readonly ISqlExpressionFactory _sqlExpressionFactory;
-
+        readonly IRelationalTypeMappingSource _typeMappingSource;
         /// <summary>
         /// The static member info for <see cref="T:SystemClock.Instance"/>.
         /// </summary>
         [NotNull] static readonly MemberInfo Instance =
             typeof(SystemClock).GetRuntimeProperty(nameof(SystemClock.Instance));
 
-        public NpgsqlNodaTimeMemberTranslator([NotNull] ISqlExpressionFactory sqlExpressionFactory)
-            => _sqlExpressionFactory = sqlExpressionFactory;
+        public NpgsqlNodaTimeMemberTranslator(
+            [NotNull] IRelationalTypeMappingSource typeMappingSource,
+            [NotNull] ISqlExpressionFactory sqlExpressionFactory)
+        {
+            _typeMappingSource = typeMappingSource;
+            _sqlExpressionFactory = sqlExpressionFactory;
+        }
 
         static readonly bool[][] TrueArrays =
         {
@@ -74,6 +82,35 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime
                 declaringType == typeof(Period))
             {
                 return TranslateDateTime(instance, member, returnType);
+            }
+
+            if (declaringType == typeof(DateInterval))
+            {
+                var typeMapping = _typeMappingSource.FindMapping(returnType);
+                var accessorName = (member.Name) switch
+                {
+                    nameof(DateInterval.Start) => "lower",
+                    nameof(DateInterval.End)   => "upper",
+                    _                          => default
+                };
+
+                if (accessorName != null)
+                {
+                    var accessor = _sqlExpressionFactory.Function(
+                        accessorName,
+                        new[] { instance },
+                        nullable: true,
+                        argumentsPropagateNullability: TrueArrays[1],
+                        returnType,
+                        typeMapping);
+
+                    return returnType.IsNullableType()
+                        ? accessor
+                        : _sqlExpressionFactory.Coalesce(
+                            accessor,
+                            _sqlExpressionFactory.Constant(default(LocalDate)),
+                            typeMapping);
+                }
             }
 
             return null;

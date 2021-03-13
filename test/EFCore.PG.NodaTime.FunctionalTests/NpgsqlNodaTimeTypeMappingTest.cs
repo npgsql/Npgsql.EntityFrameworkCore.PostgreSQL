@@ -197,6 +197,26 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL
                             Duration.FromMilliseconds(8)));
         }
 
+        [Fact]
+        public void GenerateCodeLiteral_returns_dateinterval_literal()
+        {
+            Assert.Equal("new NodaTime.DateInterval(new NodaTime.LocalDate(2020, 1, 1), new NodaTime.LocalDate(2020, 12, 25))",
+                CodeLiteral(new DateInterval(new LocalDate(2020, 01, 01), new LocalDate(2020, 12, 25))));
+        }
+
+        [Fact]
+        public void GenerateSqlLiteral_returns_dateinterval_literal()
+        {
+            var mapping = GetMapping(typeof(DateInterval));
+
+            var interval = new DateInterval(
+                new LocalDate(2020, 01, 01),
+                new LocalDate(2020, 12, 25));
+            Assert.Equal("'[2020-01-01,  2020-12-25]'::daterange", mapping.GenerateSqlLiteral(interval));
+
+
+        }
+
         #region Support
 
         static readonly NpgsqlTypeMappingSource Mapper = new(

@@ -107,6 +107,20 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime
                         typeMapping: null)
                     : null;
             }
+
+            if (declaringType == typeof(DateInterval))
+            {
+                switch (method.Name)
+                {
+                    case nameof(DateInterval.Contains):
+                        return _sqlExpressionFactory.Contains(instance, arguments[0]);
+                    case nameof(DateInterval.Intersection):
+                        return _sqlExpressionFactory.MakePostgresBinary(PostgresExpressionType.RangeIntersect, instance, arguments[0]);
+                    case nameof(DateInterval.Union):
+                        return _sqlExpressionFactory.MakePostgresBinary(PostgresExpressionType.RangeUnion, instance, arguments[0]);
+                }
+            }
+
             return null;
         }
 #pragma warning restore EF1001

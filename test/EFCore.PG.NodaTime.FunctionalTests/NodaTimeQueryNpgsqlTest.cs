@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.TestUtilities;
 using Microsoft.Extensions.DependencyInjection;
@@ -439,6 +440,19 @@ LIMIT 2");
             var _ = ctx.NodaTimeTypes.Single(t => t.DateRange.Contains(new LocalDate(2018, 4, 21)));
 
             Assert.Contains(@"n.""DateRange"" @> DATE '2018-04-21'", Sql);
+        }
+
+        [Fact]
+        public void DateInterval_Contains()
+        {
+            using var ctx = CreateContext();
+
+            var interval = new DateInterval(
+                new LocalDate(2018, 01, 01),
+                new LocalDate(2020, 12, 25));
+            var _ = ctx.NodaTimeTypes.Single(t => interval.Contains(t.LocalDate));
+
+            Assert.Contains(@"@__interval_0 @> n.""LocalDate""", Sql);
         }
 
         #endregion Range
