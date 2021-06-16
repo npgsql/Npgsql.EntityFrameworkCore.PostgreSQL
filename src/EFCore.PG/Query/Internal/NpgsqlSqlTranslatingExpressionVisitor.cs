@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -124,6 +124,152 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.Internal
                 sqlExpression.TypeMapping);
         }
 
+        /// <summary>
+        ///     Translates Aggregate data as array using PostgreSQL function ARRAY_AGG.
+        /// </summary>
+        /// <param name="fieldExpression"> An expression to translate Aggregate over. </param>
+        /// <returns> A SQL translation of String aggregate over the given expression. </returns>
+        public virtual SqlExpression TranslateArrayAgg([NotNull] SqlExpression fieldExpression)
+        {
+            Check.NotNull(fieldExpression, nameof(fieldExpression));
+
+            return (SqlExpression)_sqlExpressionFactory.Function(
+                "ARRAY_AGG",
+                new[] { fieldExpression },
+                nullable: true,
+                argumentsPropagateNullability: new[] { false },
+                fieldExpression.Type.MakeArrayType());
+        }
+
+        /// <summary>
+        ///     Translates Aggregate bitwise "AND" using PostgreSQL function BIT_AND .
+        /// </summary>
+        /// <param name="fieldExpression"> An expression to translate Aggregate over. </param>
+        /// <returns> A SQL translation of String aggregate over the given expression. </returns>
+        public virtual SqlExpression TranslateBitAnd([NotNull] SqlExpression fieldExpression)
+        {
+            Check.NotNull(fieldExpression, nameof(fieldExpression));
+
+            return (SqlExpression)_sqlExpressionFactory.Function(
+                "BIT_AND",
+                new[] { fieldExpression },
+                nullable: true,
+                argumentsPropagateNullability: new[] { false },
+                fieldExpression.Type);
+        }
+
+        /// <summary>
+        ///     Translates Aggregate bitwise "OR" using PostgreSQL function BIT_OR .
+        /// </summary>
+        /// <param name="fieldExpression"> An expression to translate Aggregate over. </param>
+        /// <returns> A SQL translation of String aggregate over the given expression. </returns>
+        public virtual SqlExpression TranslateBitOr([NotNull] SqlExpression fieldExpression)
+        {
+            Check.NotNull(fieldExpression, nameof(fieldExpression));
+
+            return (SqlExpression)_sqlExpressionFactory.Function(
+                "BIT_OR",
+                new[] { fieldExpression },
+                nullable: true,
+                argumentsPropagateNullability: new[] { false },
+                fieldExpression.Type);
+        }
+
+        /// <summary>
+        ///     Translates Aggregate if all are true using PostgreSQL function BOOL_AND .
+        /// </summary>
+        /// <param name="fieldExpression"> An expression to translate Aggregate over. </param>
+        /// <returns> A SQL translation of String aggregate over the given expression. </returns>
+        public virtual SqlExpression TranslateBoolAnd([NotNull] SqlExpression fieldExpression)
+        {
+            Check.NotNull(fieldExpression, nameof(fieldExpression));
+
+            return (SqlExpression)_sqlExpressionFactory.Function(
+                "BOOL_AND",
+                new[] { fieldExpression },
+                nullable: true,
+                argumentsPropagateNullability: new[] { false },
+                fieldExpression.Type);
+        }
+
+        /// <summary>
+        ///     Translates Aggregate if at least is true using PostgreSQL function BOOL_OR .
+        /// </summary>
+        /// <param name="fieldExpression"> An expression to translate Aggregate over. </param>
+        /// <returns> A SQL translation of String aggregate over the given expression. </returns>
+        public virtual SqlExpression TranslateBoolOr([NotNull] SqlExpression fieldExpression)
+        {
+            Check.NotNull(fieldExpression, nameof(fieldExpression));
+
+            return (SqlExpression)_sqlExpressionFactory.Function(
+                "BOOL_OR",
+                new[] { fieldExpression },
+                nullable: true,
+                argumentsPropagateNullability: new[] { false },
+                fieldExpression.Type);
+        }
+
+        /// <summary>
+        ///     Translates Aggregate strings using PostgreSQL function STRING_AGG.
+        /// </summary>
+        /// <param name="fieldExpression"> An expression to translate Aggregate over. </param>
+        /// <param name="delimiterExpression"> An expression to delimitate between string. </param>
+        /// <returns> A SQL translation of String aggregate over the given expression. </returns>
+        public virtual SqlExpression TranslateStringAgg([NotNull] SqlExpression fieldExpression, [NotNull] SqlExpression delimiterExpression)
+        {
+            Check.NotNull(fieldExpression, nameof(fieldExpression));
+            Check.NotNull(delimiterExpression, nameof(delimiterExpression));
+
+            return (SqlExpression)_sqlExpressionFactory.Function(
+                "STRING_AGG",
+                new[] { fieldExpression, delimiterExpression },
+                nullable: true,
+                argumentsPropagateNullability: new[] { false, false },
+                fieldExpression.Type,
+                fieldExpression.TypeMapping);
+        }
+
+        /// <summary>
+        ///     Translates Aggregate data as array using PostgreSQL function ARRAY_AGG.
+        /// </summary>
+        /// <param name="fieldExpression"> An expression to translate Aggregate over. </param>
+        /// <returns> A SQL translation of String aggregate over the given expression. </returns>
+        public virtual SqlExpression TranslateJsonAgg([NotNull] SqlExpression fieldExpression)
+        {
+            Check.NotNull(fieldExpression, nameof(fieldExpression));
+
+            return (SqlExpression)_sqlExpressionFactory.Function(
+                "JSON_AGG",
+                new[] { fieldExpression },
+                nullable: true,
+                argumentsPropagateNullability: new[] { false },
+                //typeof(object[]));
+                fieldExpression.Type.MakeArrayType());
+        }
+
+        /// <summary>
+        ///     Translates Aggregate data as array using PostgreSQL function ARRAY_AGG.
+        /// </summary>
+        /// <param name="fieldExpression"> An expression to translate Aggregate over. </param>
+        /// <returns> A SQL translation of String aggregate over the given expression. </returns>
+        public virtual SqlExpression TranslateJsonObjectAgg([NotNull] SqlExpression keyExpression, [NotNull] SqlExpression valueExpression)
+        {
+            Check.NotNull(keyExpression, nameof(keyExpression));
+            Check.NotNull(valueExpression, nameof(valueExpression));
+
+            return (SqlExpression)_sqlExpressionFactory.Function(
+                "JSON_OBJECT_AGG",
+                new[] { keyExpression, valueExpression },
+                nullable: true,
+                argumentsPropagateNullability: new[] { false },
+                typeof(string));
+                //typeof(Dictionary<,>).MakeGenericType(keyExpression.Type, valueExpression.Type),
+                //_typeMappingSource.FindMapping(
+                //    typeof(System.Text.Json.JsonDocument)
+                //));
+        }
+
+
         /// <inheritdoc />
         protected override Expression VisitUnary(UnaryExpression unaryExpression)
         {
@@ -169,7 +315,174 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.Internal
                 return VisitArrayMethodCall(methodCall.Method, methodCall.Arguments);
             }
 
+            // GroupBy Aggregate case
+            if (methodCall.Object == null
+                && methodCall.Method.DeclaringType == typeof(NpgsqlIEnumerableExtensions)
+                && methodCall.Arguments.Count > 0)
+            {
+                var groupingElementExpression = GroupingElementExpression.DirtyCast(Visit(methodCall.Arguments[0]));
+                if (groupingElementExpression != null) 
+                {
+                    switch (methodCall.Method.Name)
+                    {
+                        case nameof(NpgsqlIEnumerableExtensions.ArrayAgg):
+                            if (methodCall.Arguments.Count == 2)
+                            {
+                                groupingElementExpression = groupingElementExpression.ApplySelector(
+                                    Visit(RemapLambda(groupingElementExpression, UnwrapLambdaFromQuote(methodCall.Arguments[1])))
+                                );
+                            }
+                            return TranslateArrayAgg(
+                                GetExpressionForAggregation(groupingElementExpression));
+
+                        case nameof(NpgsqlIEnumerableExtensions.BitAnd):
+                            if (methodCall.Arguments.Count == 2)
+                            {
+                                groupingElementExpression = groupingElementExpression.ApplySelector(
+                                    Visit(RemapLambda(groupingElementExpression, UnwrapLambdaFromQuote(methodCall.Arguments[1])))
+                                );
+                            }
+                            return TranslateBitAnd(
+                                GetExpressionForAggregation(groupingElementExpression));
+
+                        case nameof(NpgsqlIEnumerableExtensions.BitOr):
+                            if (methodCall.Arguments.Count == 2)
+                            {
+                                groupingElementExpression = groupingElementExpression.ApplySelector(
+                                    Visit(RemapLambda(groupingElementExpression, UnwrapLambdaFromQuote(methodCall.Arguments[1])))
+                                );
+                            }
+                            return TranslateBitOr(
+                                GetExpressionForAggregation(groupingElementExpression));
+
+                        case nameof(NpgsqlIEnumerableExtensions.BoolAnd):
+                            if (methodCall.Arguments.Count == 2)
+                            {
+                                groupingElementExpression = groupingElementExpression.ApplySelector(
+                                    Visit(RemapLambda(groupingElementExpression, UnwrapLambdaFromQuote(methodCall.Arguments[1])))
+                                );
+                            }
+                            return TranslateBoolAnd(
+                                GetExpressionForAggregation(groupingElementExpression));
+
+                        case nameof(NpgsqlIEnumerableExtensions.BoolOr):
+                            if (methodCall.Arguments.Count == 2)
+                            {
+                                groupingElementExpression = groupingElementExpression.ApplySelector(
+                                    Visit(RemapLambda(groupingElementExpression, UnwrapLambdaFromQuote(methodCall.Arguments[1])))
+                                );
+                            }
+                            return TranslateBoolOr(
+                                GetExpressionForAggregation(groupingElementExpression));
+
+                        case nameof(NpgsqlIEnumerableExtensions.JsonAgg):
+                            if (methodCall.Arguments.Count == 2)
+                            {
+                                groupingElementExpression = groupingElementExpression.ApplySelector(
+                                    Visit(RemapLambda(groupingElementExpression, UnwrapLambdaFromQuote(methodCall.Arguments[1])))
+                                );
+                            }
+                            return TranslateJsonAgg(
+                                GetExpressionForAggregation(groupingElementExpression));
+
+                        case nameof(NpgsqlIEnumerableExtensions.JsonObjectAgg):
+                            if (methodCall.Arguments.Count == 3)
+                            {
+                                var keyExpression = groupingElementExpression.ApplySelector(
+                                    Visit(RemapLambda(groupingElementExpression, UnwrapLambdaFromQuote(methodCall.Arguments[1])))
+                                );
+                                groupingElementExpression = GroupingElementExpression.DirtyCast(Visit(methodCall.Arguments[0]));
+
+                                var valueExpression = groupingElementExpression.ApplySelector(
+                                    Visit(RemapLambda(groupingElementExpression, UnwrapLambdaFromQuote(methodCall.Arguments[2])))
+                                );
+                                return TranslateJsonObjectAgg(
+                                    GetExpressionForAggregation(keyExpression),
+                                    GetExpressionForAggregation(valueExpression)
+                                    );
+                            }
+                            return null;
+
+                        case nameof(NpgsqlIEnumerableExtensions.StringAgg):
+                            if (methodCall.Arguments.Count == 3)
+                            {
+                                groupingElementExpression = groupingElementExpression.ApplySelector(
+                                    Visit(RemapLambda(groupingElementExpression, UnwrapLambdaFromQuote(methodCall.Arguments[2])))
+                                );
+                            }
+                            return TranslateStringAgg(
+                                GetExpressionForAggregation(groupingElementExpression),
+                                Visit(methodCall.Arguments[1]) as SqlExpression);
+
+                    }
+                }
+            }
+
             return null;
+
+            LambdaExpression UnwrapLambdaFromQuote(Expression expression)
+                => (LambdaExpression)(expression is UnaryExpression unary && expression.NodeType == ExpressionType.Quote ? unary.Operand : expression);
+            Expression RemapLambda(GroupingElementExpression groupingElement, LambdaExpression lambdaExpression)
+                => ReplacingExpressionVisitor.Replace(lambdaExpression.Parameters[0], groupingElement.Element, lambdaExpression.Body);
+            SqlExpression GetExpressionForAggregation(GroupingElementExpression groupingElement, bool starProjection = false)
+            {
+                //var selector = TranslateInternal(groupingElement.Element);
+                var selector = Visit(groupingElement.Element) as SqlExpression;
+                if (selector == null)
+                {
+                    if (starProjection)
+                    {
+                        selector = _sqlExpressionFactory.Fragment("*");
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+
+                if (groupingElement.Predicate != null)
+                {
+                    if (selector is SqlFragmentExpression)
+                    {
+                        selector = _sqlExpressionFactory.Constant(1);
+                    }
+
+                    selector = _sqlExpressionFactory.Case(
+                        new List<CaseWhenClause> { new(groupingElement.Predicate, selector) },
+                        elseResult: null);
+                }
+
+                if (groupingElement.IsDistinct
+                    && !(selector is SqlFragmentExpression))
+                {
+                    selector = new DistinctExpression(selector);
+                }
+
+                return selector;
+            }
+        }
+
+        // Dirty Wrapper for private class Microsoft.EntityFrameworkCore.Query.RelationalSqlTranslatingExpressionVisitor+GroupingElementExpression
+        sealed class GroupingElementExpression : Expression
+        {
+            public Expression Source { get; }
+            private GroupingElementExpression(Expression group)
+            {
+                Source = group;
+            }
+            public static GroupingElementExpression DirtyCast(Expression group)
+            {
+                return group?.GetType()?.FullName == typeof(RelationalSqlTranslatingExpressionVisitor).FullName + "+GroupingElementExpression"
+                    ? new GroupingElementExpression(group) : null;
+            }
+
+            public Expression Element { get => (Expression)Source.GetType().GetProperty(nameof(Element)).GetValue(Source); } 
+            public bool IsDistinct { get => (bool)Source.GetType().GetProperty(nameof(IsDistinct)).GetValue(Source); }
+            public SqlExpression Predicate { get => (SqlExpression)Source.GetType().GetProperty(nameof(Predicate)).GetValue(Source); } 
+            public GroupingElementExpression ApplyDistinct() => DirtyCast((Expression)Source.GetType().GetMethod(nameof(ApplyDistinct)).Invoke(Source,Array.Empty<object>()));
+            public GroupingElementExpression ApplySelector(Expression expression) => DirtyCast((Expression)Source.GetType().GetMethod(nameof(ApplySelector)).Invoke(Source, new object[] { expression }));
+            public GroupingElementExpression ApplyPredicate(SqlExpression expression) => DirtyCast((Expression)Source.GetType().GetMethod(nameof(ApplyPredicate)).Invoke(Source, new[] { expression }));
+
         }
 
         /// <summary>
