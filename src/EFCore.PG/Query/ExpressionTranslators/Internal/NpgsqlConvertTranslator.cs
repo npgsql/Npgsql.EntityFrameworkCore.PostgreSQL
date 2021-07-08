@@ -16,20 +16,22 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Query.ExpressionTranslators.Inte
     {
         private static readonly Dictionary<string, string> TypeMapping = new()
         {
-            [nameof(Convert.ToBoolean)] = "bool",
-            [nameof(Convert.ToByte)]    = "smallint",
-            [nameof(Convert.ToDecimal)] = "numeric",
-            [nameof(Convert.ToDouble)]  = "double precision",
-            [nameof(Convert.ToInt16)]   = "smallint",
-            [nameof(Convert.ToInt32)]   = "int",
-            [nameof(Convert.ToInt64)]   = "bigint",
-            [nameof(Convert.ToString)]  = "text"
+            [nameof(Convert.ToBoolean)]  = "bool",
+            [nameof(Convert.ToByte)]     = "smallint",
+            [nameof(Convert.ToDateTime)] = "timestamp with time zone",
+            [nameof(Convert.ToDecimal)]  = "numeric",
+            [nameof(Convert.ToDouble)]   = "double precision",
+            [nameof(Convert.ToInt16)]    = "smallint",
+            [nameof(Convert.ToInt32)]    = "int",
+            [nameof(Convert.ToInt64)]    = "bigint",
+            [nameof(Convert.ToString)]   = "text"
         };
 
         private static readonly List<Type> SupportedTypes = new()
         {
             typeof(bool),
             typeof(byte),
+            typeof(DateTime),
             typeof(decimal),
             typeof(double),
             typeof(float),
