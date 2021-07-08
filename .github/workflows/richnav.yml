@@ -1,0 +1,30 @@
+name: Rich Navigation Indexing
+
+on: [push, pull_request]
+
+env:
+  postgis_version: 3
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build:
+    runs-on: windows-2019
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ env.dotnet_sdk_version }}
+
+      - name: Build
+        run: dotnet build --configuration Debug
+        shell: bash
+
+      - name: Rich Navigation Indexing
+        uses: microsoft/RichCodeNavIndexer@v0.1
+        with:
+          repo-token: ${{ github.token }}
+          languages: csharp
