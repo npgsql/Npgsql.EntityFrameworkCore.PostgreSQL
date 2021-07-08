@@ -29,6 +29,8 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.Internal
                 yield return new Annotation(NpgsqlAnnotationNames.UnloggedTable, entityType.GetIsUnlogged());
             if (entityType[CockroachDbAnnotationNames.InterleaveInParent] != null)
                 yield return new Annotation(CockroachDbAnnotationNames.InterleaveInParent, entityType[CockroachDbAnnotationNames.InterleaveInParent]);
+            if (entityType[NpgsqlAnnotationNames.TablePartitioning] != null)
+                yield return new Annotation(NpgsqlAnnotationNames.TablePartitioning, entityType[NpgsqlAnnotationNames.TablePartitioning]);
             foreach (var storageParamAnnotation in entityType.GetAnnotations()
                 .Where(a => a.Name.StartsWith(NpgsqlAnnotationNames.StorageParameterPrefix, StringComparison.Ordinal)))
             {

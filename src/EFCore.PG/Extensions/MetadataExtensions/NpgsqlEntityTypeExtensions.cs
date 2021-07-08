@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Utilities;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -87,6 +88,24 @@ namespace Microsoft.EntityFrameworkCore
             => index.FindAnnotation(NpgsqlAnnotationNames.UnloggedTable)?.GetConfigurationSource();
 
         #endregion Unlogged
+
+        #region Partitioning
+        public static void SetTablePartitioning(
+            this IMutableEntityType entityType,
+            TablePartitioningType tablePartitioningType,
+            params string[] partitionKeyPropertyNames)
+        {
+            Check.NotEmpty(partitionKeyPropertyNames, nameof(partitionKeyPropertyNames));
+
+            var properties = partitionKeyPropertyNames
+                .Select(x => entityType.FindProperty(x))
+                .ToArray();
+
+            entityType.SetOrRemoveAnnotation(
+                NpgsqlAnnotationNames.TablePartitioning,
+                new TablePartitioning(tablePartitioningType, properties!));
+        }
+        #endregion
 
         #region CockroachDb interleave in parent
 

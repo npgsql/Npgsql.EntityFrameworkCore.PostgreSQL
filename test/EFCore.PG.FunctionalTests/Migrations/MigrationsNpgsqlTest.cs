@@ -295,6 +295,120 @@ WITH (fillfactor=70, user_catalog_table=true);");
 );");
         }
 
+        [Fact]
+        public virtual async Task Create_table_with_list_partitioning()
+        {
+            await Test(
+                builder => { },
+                builder => builder.Entity(
+                    "People", e =>
+                    {
+                        e.Property<int>("Id");
+                        e.HasKey("Id");
+                        e.IsPartitioned(TablePartitioningType.List, "Id");
+                    }),
+                asserter: null);
+
+            AssertSql(
+                @"CREATE TABLE ""People"" (
+    ""Id"" integer NOT NULL,
+    CONSTRAINT ""PK_People"" PRIMARY KEY (""Id"")
+)
+PARTITION BY List (""Id"") ;");
+        }
+
+        [Fact]
+        public virtual async Task Create_table_with_range_partitioning()
+        {
+            await Test(
+                builder => { },
+                builder => builder.Entity(
+                    "People", e =>
+                    {
+                        e.Property<int>("Id");
+                        e.HasKey("Id");
+                        e.IsPartitioned(TablePartitioningType.Range, "Id");
+                    }),
+                asserter: null);
+
+            AssertSql(
+                @"CREATE TABLE ""People"" (
+    ""Id"" integer NOT NULL,
+    CONSTRAINT ""PK_People"" PRIMARY KEY (""Id"")
+)
+PARTITION BY Range (""Id"") ;");
+        }
+
+        [Fact]
+        public virtual async Task Create_table_with_hash_partitioning()
+        {
+            await Test(
+                builder => { },
+                builder => builder.Entity(
+                    "People", e =>
+                    {
+                        e.Property<int>("Id");
+                        e.HasKey("Id");
+                        e.IsPartitioned(TablePartitioningType.Hash, "Id");
+                    }),
+                asserter: null);
+
+            AssertSql(
+                @"CREATE TABLE ""People"" (
+    ""Id"" integer NOT NULL,
+    CONSTRAINT ""PK_People"" PRIMARY KEY (""Id"")
+)
+PARTITION BY Hash (""Id"") ;");
+        }
+
+        [Fact]
+        public virtual async Task Create_table_with_multiple_partitioning_columns()
+        {
+            await Test(
+                builder => { },
+                builder => builder.Entity(
+                    "People", e =>
+                    {
+                        e.Property<int>("Id");
+                        e.Property<int>("Location");
+                        e.HasKey("Id", "Location");
+                        e.IsPartitioned(TablePartitioningType.Hash, "Id", "Location");
+                    }),
+                asserter: null);
+
+            AssertSql(
+                @"CREATE TABLE ""People"" (
+    ""Id"" integer NOT NULL,
+    ""Location"" integer NOT NULL,
+    CONSTRAINT ""PK_People"" PRIMARY KEY (""Id"", ""Location"")
+)
+PARTITION BY Hash (""Id"", ""Location"") ;");
+        }
+
+        [Fact]
+        public virtual async Task Create_table_with_partitioning_with_custom_column_name()
+        {
+            await Test(
+                builder => { },
+                builder => builder.Entity(
+                    "People", e =>
+                    {
+                        e.Property<int>("Id");
+                        e.Property<int>("Location").HasColumnName("loc");
+                        e.HasKey("Id", "Location");
+                        e.IsPartitioned(TablePartitioningType.Hash, "Id", "Location");
+                    }),
+                asserter: null);
+
+            AssertSql(
+                @"CREATE TABLE ""People"" (
+    ""Id"" integer NOT NULL,
+    cat integer NOT NULL,
+    CONSTRAINT ""PK_People"" PRIMARY KEY (""Id"", loc)
+)
+PARTITION BY Hash (""Id"", loc) ;");
+        }
+
         public override async Task Drop_table()
         {
             await base.Drop_table();
@@ -386,6 +500,54 @@ ALTER TABLE ""People"" RESET (user_catalog_table);");
 
             AssertSql(
                 @"ALTER TABLE ""People"" SET UNLOGGED;");
+        }
+
+        [Fact]
+        public virtual async Task Alter_table_add_partitioning_throws_exception()
+        {
+            await Assert.ThrowsAsync<ArgumentException>(async () => await Test(
+                builder => builder.Entity(
+                    "People", e =>
+                    {
+                        e.Property<int>("Id");
+                        e.HasKey("Id");
+                    }),
+                builder => { },
+                builder => builder.Entity("People", e => e.IsPartitioned(TablePartitioningType.List, "Id")),
+                asserter: null));
+        }
+
+        [Fact]
+        public virtual async Task Alter_table_change_partitioning_type_throws_exception()
+        {
+            await Assert.ThrowsAsync<ArgumentException>(async () => await Test(
+                builder => builder.Entity(
+                    "People", e =>
+                    {
+                        e.Property<int>("Id");
+                        e.HasKey("Id");
+                        e.IsPartitioned(TablePartitioningType.List, "Id");
+                    }),
+                builder => { },
+                builder => builder.Entity("People", e => e.IsPartitioned(TablePartitioningType.Range, "Id")),
+                asserter: null));
+        }
+
+        [Fact]
+        public virtual async Task Alter_table_change_partitioning_key_throws_exception()
+        {
+            await Assert.ThrowsAsync<ArgumentException>(async () => await Test(
+                builder => builder.Entity(
+                    "People", e =>
+                    {
+                        e.Property<int>("Id");
+                        e.Property<int>("Location");
+                        e.HasKey("Id", "Location");
+                        e.IsPartitioned(TablePartitioningType.List, "Id");
+                    }),
+                builder => { },
+                builder => builder.Entity("People", e => e.IsPartitioned(TablePartitioningType.List, "Id", "Location")),
+                asserter: null));
         }
 
         [Fact]

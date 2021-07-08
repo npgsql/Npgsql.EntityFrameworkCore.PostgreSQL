@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.Internal;
 using Npgsql.EntityFrameworkCore.PostgreSQL.TestUtilities;
 using Xunit;
 
@@ -62,6 +63,100 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Metadata
             Assert.Null(model.FindSequence(NpgsqlModelExtensions.DefaultHiLoSequenceName));
         }
 
+        [Fact]
+        public void Is_partitioned_string_params()
+        {
+            var modelBuilder = CreateConventionModelBuilder();
+
+            modelBuilder.Entity<Order>()
+                .ToTable("orders", "my_schema")
+                .IsPartitioned(TablePartitioningType.Range, "CustomerId", "Date");
+
+            var entityType = modelBuilder.Model.FindEntityType(typeof(Order));
+
+            var tablePartitioning = entityType.GetAnnotation(NpgsqlAnnotationNames.TablePartitioning)?.Value as TablePartitioning;
+            Assert.NotNull(tablePartitioning);
+            Assert.Equal(TablePartitioningType.Range, tablePartitioning.Type);
+            Assert.Equal(2, tablePartitioning.PartitionKeyProperties.Length);
+            Assert.Equal("CustomerId", tablePartitioning.PartitionKeyProperties[0].Name);
+            Assert.Equal("Date", tablePartitioning.PartitionKeyProperties[1].Name);
+        }
+
+        [Fact]
+        public void Is_partitioned_string_list()
+        {
+            var modelBuilder = CreateConventionModelBuilder();
+
+            modelBuilder.Entity<Order>()
+                .ToTable("orders", "my_schema")
+                .IsPartitioned(TablePartitioningType.Range, new List<string> { "CustomerId", "Date" });
+
+            var entityType = modelBuilder.Model.FindEntityType(typeof(Order));
+
+            var tablePartitioning = entityType.GetAnnotation(NpgsqlAnnotationNames.TablePartitioning)?.Value as TablePartitioning;
+            Assert.NotNull(tablePartitioning);
+            Assert.Equal(TablePartitioningType.Range, tablePartitioning.Type);
+            Assert.Equal(2, tablePartitioning.PartitionKeyProperties.Length);
+            Assert.Equal("CustomerId", tablePartitioning.PartitionKeyProperties[0].Name);
+            Assert.Equal("Date", tablePartitioning.PartitionKeyProperties[1].Name);
+        }
+
+        [Fact]
+        public void Is_partitioned_properties_expression()
+        {
+            var modelBuilder = CreateConventionModelBuilder();
+
+            modelBuilder.Entity<Order>()
+                .ToTable("orders", "my_schema")
+                .IsPartitioned(TablePartitioningType.Range, x => new { x.CustomerId, x.Date });
+
+            var entityType = modelBuilder.Model.FindEntityType(typeof(Order));
+
+            var tablePartitioning = entityType.GetAnnotation(NpgsqlAnnotationNames.TablePartitioning)?.Value as TablePartitioning;
+            Assert.NotNull(tablePartitioning);
+            Assert.Equal(TablePartitioningType.Range, tablePartitioning.Type);
+            Assert.Equal(2, tablePartitioning.PartitionKeyProperties.Length);
+            Assert.Equal("CustomerId", tablePartitioning.PartitionKeyProperties[0].Name);
+            Assert.Equal("Date", tablePartitioning.PartitionKeyProperties[1].Name);
+        }
+
+        [Fact]
+        public void Is_partitioned_property_expression()
+        {
+            var modelBuilder = CreateConventionModelBuilder();
+
+            modelBuilder.Entity<Order>()
+                .ToTable("orders", "my_schema")
+                .IsPartitioned(TablePartitioningType.Range, x => x.Date);
+
+            var entityType = modelBuilder.Model.FindEntityType(typeof(Order));
+
+            var tablePartitioning = entityType.GetAnnotation(NpgsqlAnnotationNames.TablePartitioning)?.Value as TablePartitioning;
+            Assert.NotNull(tablePartitioning);
+            Assert.Equal(TablePartitioningType.Range, tablePartitioning.Type);
+            Assert.Single(tablePartitioning.PartitionKeyProperties);
+            Assert.Equal("Date", tablePartitioning.PartitionKeyProperties[0].Name);
+        }
+
+        [Fact]
+        public void Is_partitioned_null_schema()
+        {
+            var modelBuilder = CreateConventionModelBuilder();
+
+            modelBuilder.Entity<Order>()
+                .ToTable("orders")
+                .IsPartitioned(TablePartitioningType.Range, x => new { x.CustomerId, x.Date });
+
+            var entityType = modelBuilder.Model.FindEntityType(typeof(Order));
+
+            var tablePartitioning = entityType.GetAnnotation(NpgsqlAnnotationNames.TablePartitioning)?.Value as TablePartitioning;
+            Assert.NotNull(tablePartitioning);
+            Assert.Equal(TablePartitioningType.Range, tablePartitioning.Type);
+            Assert.Equal(2, tablePartitioning.PartitionKeyProperties.Length);
+            Assert.Equal("CustomerId", tablePartitioning.PartitionKeyProperties[0].Name);
+            Assert.Equal("Date", tablePartitioning.PartitionKeyProperties[1].Name);
+        }
+
         protected virtual ModelBuilder CreateConventionModelBuilder()
             => NpgsqlTestHelpers.Instance.CreateConventionBuilder();
 
@@ -78,6 +173,9 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Metadata
             public int OrderId { get; set; }
 
             public int CustomerId { get; set; }
+
+            public DateTime Date { get; set; }
+
             public Customer Customer { get; set; }
 
             public OrderDetails Details { get; set; }

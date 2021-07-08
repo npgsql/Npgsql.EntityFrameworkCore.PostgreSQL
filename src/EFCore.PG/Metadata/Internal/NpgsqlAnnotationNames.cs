@@ -22,6 +22,7 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.Internal
         public const string Tablespace = Prefix + "Tablespace";
         public const string StorageParameterPrefix = Prefix + "StorageParameter:";
         public const string UnloggedTable = Prefix + "UnloggedTable";
+        public const string TablePartitioning = Prefix + "TablePartitioning";
         public const string IdentityOptions = Prefix + "IdentitySequenceOptions";
         public const string TsVectorConfig = Prefix + "TsVectorConfig";
         public const string TsVectorProperties = Prefix + "TsVectorProperties";

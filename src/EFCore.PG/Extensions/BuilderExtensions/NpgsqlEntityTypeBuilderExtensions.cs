@@ -289,6 +289,62 @@ namespace Microsoft.EntityFrameworkCore
 
         #endregion
 
+        #region Partitioning
+        /// <summary>
+        /// Configures the entity to use table partitioning when targeting Npsql.
+        /// </summary>
+        /// <param name="entityTypeBuilder">The builder for the entity type being configured.</param>
+        /// <param name="tablePartitioningType">The type of partitioning to use on the table.</param>
+        /// <param name="partitionKeyPropertyNames">The entity's properties to use as key for the partitioning.</param>
+        /// <returns></returns>
+        public static EntityTypeBuilder IsPartitioned(
+            this EntityTypeBuilder entityTypeBuilder,
+            TablePartitioningType tablePartitioningType,
+            params string[] partitionKeyPropertyNames)
+        {
+            Check.NotNull(entityTypeBuilder, nameof(entityTypeBuilder));
+            Check.NotEmpty(partitionKeyPropertyNames, nameof(partitionKeyPropertyNames));
+
+            entityTypeBuilder.Metadata.SetTablePartitioning(tablePartitioningType, partitionKeyPropertyNames);
+
+            return entityTypeBuilder;
+        }
+
+        /// <summary>
+        /// Configures the entity to use table partitioning when targeting Npsql.
+        /// </summary>
+        /// <param name="entityTypeBuilder">The builder for the entity type being configured.</param>
+        /// <param name="tablePartitioningType">The type of partitioning to use on the table.</param>
+        /// <param name="partitionKeyPropertyNames">The entity's properties to use as key for the partitioning.</param>
+        /// <returns></returns>
+        public static EntityTypeBuilder IsPartitioned(
+            this EntityTypeBuilder entityTypeBuilder,
+            TablePartitioningType tablePartitioningType,
+            IEnumerable<string> partitionKeyPropertyNames)
+            => IsPartitioned(
+                entityTypeBuilder,
+                tablePartitioningType,
+                partitionKeyPropertyNames.ToArray());
+
+        /// <summary>
+        /// Configures the entity to use table partitioning when targeting Npsql.
+        /// </summary>
+        /// <param name="entityTypeBuilder">The builder for the entity type being configured.</param>
+        /// <param name="tablePartitioningType">The type of partitioning to use on the table.</param>
+        /// <param name="partitionKeyPropertyNames">An expression representinng the entity's properties to use as key of the partition.</param>
+        public static EntityTypeBuilder<TEntity> IsPartitioned<TEntity>(
+            this EntityTypeBuilder<TEntity> entityTypeBuilder,
+            TablePartitioningType tablePartitioningType,
+            Expression<Func<TEntity, object?>> partitionKeyPropertyExpression)
+            where TEntity : class
+            => (EntityTypeBuilder<TEntity>)IsPartitioned(
+                entityTypeBuilder,
+                tablePartitioningType,
+                Check.NotNull(partitionKeyPropertyExpression, nameof(partitionKeyPropertyExpression))
+                    .GetMemberAccessList().Select(x => x.GetSimpleMemberName()));
+
+        #endregion
+
         #region CockroachDB Interleave-in-parent
 
         public static EntityTypeBuilder UseCockroachDbInterleaveInParent(

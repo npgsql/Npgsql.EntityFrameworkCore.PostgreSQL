@@ -166,6 +166,22 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Migrations
 
             builder.Append(")");
 
+            // Table Partitioning (https://www.postgresql.org/docs/current/ddl-partitioning.html)
+            if (operation[NpgsqlAnnotationNames.TablePartitioning] is TablePartitioning tablePartitioning)
+            {
+                var columnNames = tablePartitioning.PartitionKeyProperties
+                    .Select(property =>
+                        property.GetColumnName(StoreObjectIdentifier.Table(operation.Name, operation.Schema)))
+                    .ToArray();
+
+                builder.AppendLine()
+                    .Append("PARTITION BY ")
+                    .Append(GetPartitionTypeString(tablePartitioning.Type))
+                    .Append(" (")
+                    .Append(ColumnList(columnNames!))
+                    .Append(") ");
+            }
+
             // CockroachDB "interleave in parent" (https://www.cockroachlabs.com/docs/stable/interleave-in-parent.html)
             if (operation[CockroachDbAnnotationNames.InterleaveInParent] is string)
             {
@@ -230,6 +246,12 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Migrations
         protected override void Generate(AlterTableOperation operation, IModel? model, MigrationCommandListBuilder builder)
         {
             var madeChanges = false;
+
+            // Table Partitioning may not be added after table creation
+            if (HasTablePartioningChanges(operation))
+            {
+                throw new ArgumentException($"When generating migrations SQL for {nameof(AlterTableOperation)}, can't alter a table's partitioning after it was created.");
+            }
 
             // Storage parameters
             var oldStorageParameters = GetStorageParameters(operation.OldTable);
@@ -1676,6 +1698,38 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Migrations
         }
 
         #endregion Storage parameter utilities
+
+        #region Partitioning utilities
+        private static string GetPartitionTypeString(TablePartitioningType type)
+        {
+            return type switch
+            {
+                TablePartitioningType.Range => "Range",
+                TablePartitioningType.List => "List",
+                TablePartitioningType.Hash => "Hash",
+                _ => throw new NotSupportedException("Given TablePartitioningType is not supported as part of the NpgsqlMigrationSqlGenerator.")
+            };
+        }
+
+        private static bool HasTablePartioningChanges(AlterTableOperation operation)
+        {
+            var oldPartitioningConfiguration = operation.OldTable[NpgsqlAnnotationNames.TablePartitioning] as TablePartitioning;
+            var newPartitioningConfiguration = operation[NpgsqlAnnotationNames.TablePartitioning] as TablePartitioning;
+
+            var oldPartitionPropertyNames = oldPartitioningConfiguration
+                ?.PartitionKeyProperties
+                ?.Select(x => x.Name) ?? new List<string>();
+
+            var newPartitionPropertyNames = newPartitioningConfiguration
+                ?.PartitionKeyProperties
+                ?.Select(x => x.Name) ?? new List<string>();
+
+            return oldPartitioningConfiguration?.Type != newPartitioningConfiguration?.Type ||
+                !oldPartitionPropertyNames.SequenceEqual(newPartitionPropertyNames);
+
+            
+        }
+        #endregion
 
         #region Helpers
 
