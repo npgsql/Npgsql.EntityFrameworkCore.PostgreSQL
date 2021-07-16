@@ -21,9 +21,6 @@ namespace Microsoft.EntityFrameworkCore
         {
             Check.NotNull(optionsBuilder, nameof(optionsBuilder));
 
-            // TODO: Global-only setup at the ADO.NET level for now, optionally allow per-connection?
-            NpgsqlConnection.GlobalTypeMapper.UseNodaTime();
-
             var coreOptionsBuilder = ((IRelationalDbContextOptionsBuilderInfrastructure)optionsBuilder).OptionsBuilder;
 
             var extension = coreOptionsBuilder.Options.FindExtension<NpgsqlNodaTimeOptionsExtension>()
