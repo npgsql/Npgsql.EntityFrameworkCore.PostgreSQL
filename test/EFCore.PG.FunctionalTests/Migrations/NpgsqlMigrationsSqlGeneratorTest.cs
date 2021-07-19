@@ -516,6 +516,365 @@ INTERLEAVE IN PARENT my_schema.my_parent (col_a, col_b);
 
         #endregion CockroachDB interleave-in-parent
 
+        #region Postgres-xl Distribute by
+
+        [Fact]
+        public void CreateTableOperation_with_postgresxl_distribute_by_replication()
+        {
+            var op =
+                new CreateTableOperation
+                {
+                    Name = "People",
+                    Schema = "dbo",
+                    Columns =
+                    {
+                        new AddColumnOperation
+                        {
+                            Name = "Id",
+                            Table = "People",
+                            Schema = "dbo",
+                            ClrType = typeof(int),
+                            IsNullable = false
+                        },
+                    },
+                    PrimaryKey = new AddPrimaryKeyOperation
+                    {
+                        Columns = new[] { "Id" }
+                    }
+                };
+
+            var distribution = new PostgresXlDistributeBy(op);
+            distribution.DistributionStrategy = PostgresXlDistributeByStrategy.Replication;
+
+            Generate(op);
+
+            AssertSql(
+                @"CREATE TABLE dbo.""People"" (
+    ""Id"" integer NOT NULL,
+    PRIMARY KEY (""Id"")
+)
+DISTRIBUTE BY REPLICATION;
+");
+        }
+
+        [Fact]
+        public void CreateTableOperation_with_postgresxl_distribute_by_roundrobin()
+        {
+            var op =
+                new CreateTableOperation
+                {
+                    Name = "People",
+                    Schema = "dbo",
+                    Columns =
+                    {
+                        new AddColumnOperation
+                        {
+                            Name = "Id",
+                            Table = "People",
+                            Schema = "dbo",
+                            ClrType = typeof(int),
+                            IsNullable = false
+                        },
+                    },
+                    PrimaryKey = new AddPrimaryKeyOperation
+                    {
+                        Columns = new[] { "Id" }
+                    }
+                };
+
+            var distribution = new PostgresXlDistributeBy(op);
+            distribution.DistributionStrategy = PostgresXlDistributeByStrategy.RoundRobin;
+
+            Generate(op);
+
+            AssertSql(
+                @"CREATE TABLE dbo.""People"" (
+    ""Id"" integer NOT NULL,
+    PRIMARY KEY (""Id"")
+)
+DISTRIBUTE BY ROUNDROBIN;
+");
+        }
+
+        [Fact]
+        public void CreateTableOperation_with_postgresxl_distribute_by_hash_column()
+        {
+            var op =
+                new CreateTableOperation
+                {
+                    Name = "People",
+                    Schema = "dbo",
+                    Columns =
+                    {
+                        new AddColumnOperation
+                        {
+                            Name = "Id",
+                            Table = "People",
+                            Schema = "dbo",
+                            ClrType = typeof(int),
+                            IsNullable = false
+                        },
+                    },
+                    PrimaryKey = new AddPrimaryKeyOperation
+                    {
+                        Columns = new[] { "Id" }
+                    }
+                };
+
+            var distribution = new PostgresXlDistributeBy(op);
+            distribution.DistributionStrategy = PostgresXlDistributeByStrategy.None;
+            distribution.DistributeByColumnFunction = PostgresXlDistributeByColumnFunction.Hash;
+            distribution.DistributeByPropertyName = "Id";
+
+            Generate(op);
+
+            AssertSql(
+                @"CREATE TABLE dbo.""People"" (
+    ""Id"" integer NOT NULL,
+    PRIMARY KEY (""Id"")
+)
+DISTRIBUTE BY HASH (""Id"");
+");
+        }
+
+        [Fact]
+        public void CreateTableOperation_with_postgresxl_distribute_by_modulo_column()
+        {
+            var op =
+                new CreateTableOperation
+                {
+                    Name = "People",
+                    Schema = "dbo",
+                    Columns =
+                    {
+                        new AddColumnOperation
+                        {
+                            Name = "Id",
+                            Table = "People",
+                            Schema = "dbo",
+                            ClrType = typeof(int),
+                            IsNullable = false
+                        },
+                    },
+                    PrimaryKey = new AddPrimaryKeyOperation
+                    {
+                        Columns = new[] { "Id" }
+                    }
+                };
+
+            var distribution = new PostgresXlDistributeBy(op);
+            distribution.DistributionStrategy = PostgresXlDistributeByStrategy.None;
+            distribution.DistributeByColumnFunction = PostgresXlDistributeByColumnFunction.Modulo;
+            distribution.DistributeByPropertyName = "Id";
+
+            Generate(op);
+
+            AssertSql(
+                @"CREATE TABLE dbo.""People"" (
+    ""Id"" integer NOT NULL,
+    PRIMARY KEY (""Id"")
+)
+DISTRIBUTE BY MODULO (""Id"");
+");
+        }
+
+        [Fact]
+        public void CreateTableOperation_with_postgresxl_distributed_by_column()
+        {
+            var op =
+                new CreateTableOperation
+                {
+                    Name = "People",
+                    Schema = "dbo",
+                    Columns =
+                    {
+                        new AddColumnOperation
+                        {
+                            Name = "Id",
+                            Table = "People",
+                            Schema = "dbo",
+                            ClrType = typeof(int),
+                            IsNullable = false
+                        },
+                    },
+                    PrimaryKey = new AddPrimaryKeyOperation
+                    {
+                        Columns = new[] { "Id" }
+                    }
+                };
+
+            var distribution = new PostgresXlDistributeBy(op);
+            distribution.DistributionStrategy = PostgresXlDistributeByStrategy.None;
+            distribution.DistributeByPropertyName = "Id";
+
+            Generate(op);
+
+            AssertSql(
+                @"CREATE TABLE dbo.""People"" (
+    ""Id"" integer NOT NULL,
+    PRIMARY KEY (""Id"")
+)
+DISTRIBUTED BY (""Id"");
+");
+        }
+
+        [Fact]
+        public void CreateTableOperation_with_postgresxl_distributed_randomly()
+        {
+            var op =
+                new CreateTableOperation
+                {
+                    Name = "People",
+                    Schema = "dbo",
+                    Columns =
+                    {
+                        new AddColumnOperation
+                        {
+                            Name = "Id",
+                            Table = "People",
+                            Schema = "dbo",
+                            ClrType = typeof(int),
+                            IsNullable = false
+                        },
+                    },
+                    PrimaryKey = new AddPrimaryKeyOperation
+                    {
+                        Columns = new[] { "Id" }
+                    }
+                };
+
+            var distribution = new PostgresXlDistributeBy(op);
+            distribution.DistributionStrategy = PostgresXlDistributeByStrategy.Randomly;
+
+            Generate(op);
+
+            AssertSql(
+                @"CREATE TABLE dbo.""People"" (
+    ""Id"" integer NOT NULL,
+    PRIMARY KEY (""Id"")
+)
+DISTRIBUTED RANDOMLY;
+");
+        }
+
+        [Fact]
+        public void CreateTableOperation_with_postgresxl_diststyle_even()
+        {
+            var op =
+                new CreateTableOperation
+                {
+                    Name = "People",
+                    Schema = "dbo",
+                    Columns =
+                    {
+                        new AddColumnOperation
+                        {
+                            Name = "Id",
+                            Table = "People",
+                            Schema = "dbo",
+                            ClrType = typeof(int),
+                            IsNullable = false
+                        },
+                    },
+                    PrimaryKey = new AddPrimaryKeyOperation
+                    {
+                        Columns = new[] { "Id" }
+                    }
+                };
+
+            var distribution = new PostgresXlDistributeBy(op);
+            distribution.DistributionStyle = PostgresXlDistributionStyle.Even;
+
+            Generate(op);
+
+            AssertSql(
+                @"CREATE TABLE dbo.""People"" (
+    ""Id"" integer NOT NULL,
+    PRIMARY KEY (""Id"")
+)
+DISTSTYLE EVEN;
+");
+        }
+        [Fact]
+        public void CreateTableOperation_with_postgresxl_diststyle_key()
+        {
+            var op =
+                new CreateTableOperation
+                {
+                    Name = "People",
+                    Schema = "dbo",
+                    Columns =
+                    {
+                        new AddColumnOperation
+                        {
+                            Name = "Id",
+                            Table = "People",
+                            Schema = "dbo",
+                            ClrType = typeof(int),
+                            IsNullable = false
+                        },
+                    },
+                    PrimaryKey = new AddPrimaryKeyOperation
+                    {
+                        Columns = new[] { "Id" }
+                    }
+                };
+
+            var distribution = new PostgresXlDistributeBy(op);
+            distribution.DistributionStyle = PostgresXlDistributionStyle.Key;
+            distribution.DistributeByPropertyName = "Id";
+
+            Generate(op);
+
+            AssertSql(
+                @"CREATE TABLE dbo.""People"" (
+    ""Id"" integer NOT NULL,
+    PRIMARY KEY (""Id"")
+)
+DISTSTYLE KEY DISTKEY (""Id"");
+");
+        }
+        [Fact]
+        public void CreateTableOperation_with_postgresxl_diststyle_all()
+        {
+            var op =
+                new CreateTableOperation
+                {
+                    Name = "People",
+                    Schema = "dbo",
+                    Columns =
+                    {
+                        new AddColumnOperation
+                        {
+                            Name = "Id",
+                            Table = "People",
+                            Schema = "dbo",
+                            ClrType = typeof(int),
+                            IsNullable = false
+                        },
+                    },
+                    PrimaryKey = new AddPrimaryKeyOperation
+                    {
+                        Columns = new[] { "Id" }
+                    }
+                };
+
+            var distribution = new PostgresXlDistributeBy(op);
+            distribution.DistributionStyle = PostgresXlDistributionStyle.All;
+
+            Generate(op);
+
+            AssertSql(
+                @"CREATE TABLE dbo.""People"" (
+    ""Id"" integer NOT NULL,
+    PRIMARY KEY (""Id"")
+)
+DISTSTYLE ALL;
+");
+        }
+
+        #endregion Postgres-xl Distribute by
+
 #pragma warning disable 618
         [Fact]
         public virtual void AddColumnOperation_serial_old_annotation_throws()

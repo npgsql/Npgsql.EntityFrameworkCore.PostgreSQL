@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -193,6 +194,69 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Migrations
                     .Append(")");
             }
 
+            // Postgres-XL - Distribute by (https://www.postgres-xl.org/documentation/sql-createtable.html)
+            if (operation[PostgresXlDistributeByAnnotationNames.DistributeBy] is string)
+            {
+                var distributeBy = new PostgresXlDistributeBy(operation);
+                var (distributionStrategy, distributeByColumnFunction, distributionStyle, distributeByColumnName) = distributeBy;
+
+                ValidateTableDistributionProperties(distributionStrategy, distributeByColumnFunction, distributionStyle, distributeByColumnName);
+
+                if (distributionStyle == PostgresXlDistributionStyle.None)
+                {
+                    if (distributionStrategy == PostgresXlDistributeByStrategy.Replication || distributionStrategy == PostgresXlDistributeByStrategy.RoundRobin)
+                    {
+                        builder.AppendLine()
+                            .Append("DISTRIBUTE BY ")
+                            .Append(distributionStrategy.ToString().ToUpperInvariant());
+                    }
+                    else if (distributeByColumnFunction != PostgresXlDistributeByColumnFunction.None)
+                    {
+                        builder.AppendLine()
+                            .Append("DISTRIBUTE BY ")
+                            .Append(distributeByColumnFunction.ToString().ToUpperInvariant())
+                            .Append(" (")
+                            .Append(DelimitIdentifier(distributeByColumnName!))
+                            .Append(")");
+                    }
+
+                    if ((distributionStrategy == PostgresXlDistributeByStrategy.Randomly
+                            || (distributeByColumnFunction == PostgresXlDistributeByColumnFunction.None
+                                && !string.IsNullOrWhiteSpace(distributeByColumnName))))
+                    {
+                        builder.AppendLine()
+                            .Append("DISTRIBUTED ");
+
+                        if (distributionStrategy == PostgresXlDistributeByStrategy.Randomly)
+                        {
+                            builder.Append(PostgresXlDistributeByStrategy.Randomly.ToString().ToUpperInvariant());
+                        }
+                        else if (!string.IsNullOrWhiteSpace(distributeByColumnName)
+                            && distributeByColumnFunction == PostgresXlDistributeByColumnFunction.None)
+                        {
+                            builder.Append("BY (")
+                                .Append(DelimitIdentifier(distributeByColumnName))
+                                .Append(")");
+                        }
+                    }
+                }
+                else if (distributionStyle == PostgresXlDistributionStyle.Key)
+                {
+                    builder.AppendLine()
+                        .Append("DISTSTYLE ")
+                        .Append(distributionStyle.ToString().ToUpperInvariant())
+                        .Append(" DISTKEY (")
+                        .Append(DelimitIdentifier(distributeByColumnName!))
+                        .Append(")");
+                }
+                else if (distributionStyle == PostgresXlDistributionStyle.All || distributionStyle == PostgresXlDistributionStyle.Even)
+                {
+                    builder.AppendLine()
+                        .Append("DISTSTYLE ")
+                        .Append(distributionStyle.ToString().ToUpperInvariant());
+                }
+            }
+
             // Comment on the table
             if (operation.Comment != null)
             {
@@ -224,6 +288,119 @@ namespace Npgsql.EntityFrameworkCore.PostgreSQL.Migrations
             {
                 builder.AppendLine(";");
                 EndStatement(builder);
+            }
+
+            static void ValidateTableDistributionProperties(
+                PostgresXlDistributeByStrategy distributionStrategy,
+                PostgresXlDistributeByColumnFunction distributeByColumnFunction,
+                PostgresXlDistributionStyle distributionStyle,
+                // ReSharper disable once ParameterOnlyUsedForPreconditionCheck.Local
+                string? distributeByColumnName)
+            {
+                switch (distributionStrategy)
+                {
+                    case PostgresXlDistributeByStrategy.Replication:
+                    case PostgresXlDistributeByStrategy.RoundRobin:
+                    case PostgresXlDistributeByStrategy.Randomly:
+                        // If column is defined, throw
+                        if (!string.IsNullOrWhiteSpace(distributeByColumnName))
+                        {
+                            throw new NotSupportedException(
+                                $"{nameof(distributeByColumnName)} cannot be provided when {nameof(PostgresXlDistributeByStrategy)} is specified.");
+                        }
+
+                        // If any others are defined, throw
+                        if (distributeByColumnFunction != PostgresXlDistributeByColumnFunction.None)
+                        {
+                            throw new NotSupportedException(
+                                $"{nameof(distributeByColumnFunction)} cannot be provided when {nameof(PostgresXlDistributeByStrategy)} is specified.");
+                        }
+
+                        if (distributionStyle != PostgresXlDistributionStyle.None)
+                        {
+                            throw new NotSupportedException(
+                                $"{nameof(distributionStyle)} cannot be provided when {nameof(PostgresXlDistributeByStrategy)} is specified.");
+                        }
+
+                        break;
+                }
+
+                switch (distributeByColumnFunction)
+                {
+                    case PostgresXlDistributeByColumnFunction.Hash:
+                    case PostgresXlDistributeByColumnFunction.Modulo:
+                        // If column is not defined, throw
+                        if (string.IsNullOrWhiteSpace(distributeByColumnName))
+                        {
+                            throw new NotSupportedException(
+                                $"{nameof(distributeByColumnName)} must be provided when {nameof(PostgresXlDistributeByColumnFunction)} is specified.");
+                        }
+
+                        // If any others are defined, throw
+                        if (distributionStrategy != PostgresXlDistributeByStrategy.None)
+                        {
+                            throw new NotSupportedException(
+                                $"{nameof(distributionStrategy)} cannot be provided when {nameof(PostgresXlDistributeByColumnFunction)} is specified.");
+                        }
+
+                        if (distributionStyle != PostgresXlDistributionStyle.None)
+                        {
+                            throw new NotSupportedException(
+                                $"{nameof(distributionStyle)} cannot be provided when {nameof(PostgresXlDistributeByColumnFunction)} is specified.");
+                        }
+
+                        break;
+                }
+
+                switch (distributionStyle)
+                {
+                    case PostgresXlDistributionStyle.Key:
+                        // If column is not defined, throw
+                        if (string.IsNullOrWhiteSpace(distributeByColumnName))
+                        {
+                            throw new NotSupportedException(
+                                $"{nameof(distributeByColumnName)} must be provided when {nameof(PostgresXlDistributionStyle)} is specified.");
+                        }
+
+                        // If any others are defined, throw
+                        if (distributionStrategy != PostgresXlDistributeByStrategy.None)
+                        {
+                            throw new NotSupportedException(
+                                $"{nameof(distributionStrategy)} cannot be provided when {nameof(PostgresXlDistributionStyle)} is specified.");
+                        }
+
+                        if (distributeByColumnFunction != PostgresXlDistributeByColumnFunction.None)
+                        {
+                            throw new NotSupportedException(
+                                $"{nameof(distributeByColumnFunction)} cannot be provided when {nameof(PostgresXlDistributionStyle)} is specified.");
+                        }
+
+                        break;
+                    case PostgresXlDistributionStyle.Even:
+                    case PostgresXlDistributionStyle.All:
+                        // If column is defined, throw
+                        if (!string.IsNullOrWhiteSpace(distributeByColumnName))
+                        {
+                            throw new NotSupportedException(
+                                $"{nameof(distributeByColumnName)} must be provided when {nameof(PostgresXlDistributionStyle)} is specified.");
+                        }
+
+                        // If any others are defined, throw
+                        if (distributionStrategy != PostgresXlDistributeByStrategy.None)
+                        {
+                            throw new NotSupportedException(
+                                $"{nameof(distributionStrategy)} cannot be provided when {nameof(PostgresXlDistributionStyle)} is specified.");
+                        }
+
+                        if (distributeByColumnFunction != PostgresXlDistributeByColumnFunction.None)
+                        {
+                            throw new NotSupportedException(
+                                $"{nameof(distributeByColumnFunction)} cannot be provided when {nameof(PostgresXlDistributionStyle)} is specified.");
+                        }
+
+                        // If any others are defined, throw
+                        break;
+                }
             }
         }
 

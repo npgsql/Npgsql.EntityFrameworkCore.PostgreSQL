@@ -328,6 +328,134 @@ namespace Microsoft.EntityFrameworkCore
 
         #endregion CockroachDB Interleave-in-parent
 
+        #region Postgres-xl Distribute By
+
+        public static EntityTypeBuilder PostgresXlDistributeBy(
+            this EntityTypeBuilder entityTypeBuilder,
+            PostgresXlDistributeByStrategy distributeByStrategy)
+        {
+            switch (distributeByStrategy)
+            {
+                case PostgresXlDistributeByStrategy.Replication:
+                case PostgresXlDistributeByStrategy.RoundRobin:
+                case PostgresXlDistributeByStrategy.Randomly:
+                    var distribute = entityTypeBuilder.Metadata.GetPostgresXlDistributeBy();
+                    distribute.DistributionStrategy = distributeByStrategy;
+                    break;
+            }
+
+            return entityTypeBuilder;
+        }
+
+        public static EntityTypeBuilder<TEntity> PostgresXlDistributeBy<TEntity>(
+            this EntityTypeBuilder<TEntity> entityTypeBuilder,
+            PostgresXlDistributeByStrategy distributeByStrategy)
+            where TEntity : class
+            => (EntityTypeBuilder<TEntity>)PostgresXlDistributeBy((EntityTypeBuilder)entityTypeBuilder, distributeByStrategy);
+
+        public static EntityTypeBuilder PostgresXlDistributeBy(
+            this EntityTypeBuilder entityTypeBuilder,
+            string propertyName,
+            PostgresXlDistributeByColumnFunction distributeByColumnFunction = PostgresXlDistributeByColumnFunction.None)
+        {
+            Check.NotNull(entityTypeBuilder, nameof(entityTypeBuilder));
+            Check.NotEmpty(propertyName, nameof(propertyName));
+
+            var distribute = entityTypeBuilder.Metadata.GetPostgresXlDistributeBy();
+
+            distribute.DistributionStrategy = PostgresXlDistributeByStrategy.None;
+            distribute.DistributeByColumnFunction = distributeByColumnFunction;
+            distribute.DistributeByPropertyName = propertyName;
+
+            return entityTypeBuilder;
+        }
+
+        public static EntityTypeBuilder PostgresXlDistributeBy<TEntity>(
+            this EntityTypeBuilder entityTypeBuilder,
+            Expression<Func<TEntity, object>> propertyExpression,
+            PostgresXlDistributeByColumnFunction distributeByColumnFunction = PostgresXlDistributeByColumnFunction.None)
+        {
+            Check.NotNull(entityTypeBuilder, nameof(entityTypeBuilder));
+            Check.NotNull(propertyExpression, nameof(propertyExpression));
+
+            entityTypeBuilder.PostgresXlDistributeBy(propertyExpression.GetPropertyAccess().Name, distributeByColumnFunction);
+
+            return entityTypeBuilder;
+        }
+
+        public static EntityTypeBuilder<TEntity> PostgresXlDistributeBy<TEntity>(
+            this EntityTypeBuilder<TEntity> entityTypeBuilder,
+            string propertyName,
+            PostgresXlDistributeByColumnFunction distributeByColumnFunction = PostgresXlDistributeByColumnFunction.None)
+            where TEntity : class
+            => (EntityTypeBuilder<TEntity>)PostgresXlDistributeBy(
+                (EntityTypeBuilder)entityTypeBuilder, propertyName, distributeByColumnFunction);
+
+        public static EntityTypeBuilder PostgresXlDistributionStyle(
+            this EntityTypeBuilder entityTypeBuilder,
+            PostgresXlDistributionStyle distributionStyle)
+        {
+            Check.NotNull(entityTypeBuilder, nameof(entityTypeBuilder));
+
+            var distribute = entityTypeBuilder.Metadata.GetPostgresXlDistributeBy();
+
+            switch (distributionStyle)
+            {
+                case EntityFrameworkCore.PostgresXlDistributionStyle.Even:
+                case EntityFrameworkCore.PostgresXlDistributionStyle.All:
+                    distribute.DistributionStyle = distributionStyle;
+                    return entityTypeBuilder;
+                case EntityFrameworkCore.PostgresXlDistributionStyle.Key:
+                    throw new ArgumentException(
+                        $"Distribution style {EntityFrameworkCore.PostgresXlDistributionStyle.Key} was provided with no key. To use DISTSTYLE KEY, use {nameof(PostgresXlDistributionStyleKey)} instead.");
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(distributionStyle), distributionStyle, $@"Invalid {nameof(EntityFrameworkCore)} provided.");
+            }
+        }
+
+        public static EntityTypeBuilder<TEntity> PostgresXlDistributionStyle<TEntity>(
+            this EntityTypeBuilder<TEntity> entityTypeBuilder,
+            PostgresXlDistributionStyle distributionStyle
+            )
+            where TEntity : class
+            => (EntityTypeBuilder<TEntity>)PostgresXlDistributionStyle((EntityTypeBuilder)entityTypeBuilder, distributionStyle);
+
+
+        public static EntityTypeBuilder PostgresXlDistributionStyleKey(
+            this EntityTypeBuilder entityTypeBuilder,
+            string distributionKey)
+        {
+            Check.NotNull(entityTypeBuilder, nameof(entityTypeBuilder));
+            Check.NotEmpty(distributionKey, nameof(distributionKey));
+
+            var distribute = entityTypeBuilder.Metadata.GetPostgresXlDistributeBy();
+
+            distribute.DistributionStyle = EntityFrameworkCore.PostgresXlDistributionStyle.Key;
+            distribute.DistributeByPropertyName = distributionKey;
+            return entityTypeBuilder;
+        }
+
+        public static EntityTypeBuilder<TEntity> PostgresXlDistributionStyleKey<TEntity>(
+            this EntityTypeBuilder<TEntity> entityTypeBuilder,
+            Expression<Func<TEntity, object>> distributionKeyExpression)
+            where TEntity : class
+        {
+            Check.NotNull(entityTypeBuilder, nameof(entityTypeBuilder));
+            Check.NotNull(distributionKeyExpression, nameof(distributionKeyExpression));
+
+            entityTypeBuilder.PostgresXlDistributionStyleKey(distributionKeyExpression.GetPropertyAccess().Name);
+
+            return entityTypeBuilder;
+        }
+
+        public static EntityTypeBuilder<TEntity> PostgresXlDistributionStyleKey<TEntity>(
+            this EntityTypeBuilder<TEntity> entityTypeBuilder,
+            string distributionKey)
+            where TEntity : class
+            => (EntityTypeBuilder<TEntity>)PostgresXlDistributionStyleKey((EntityTypeBuilder)entityTypeBuilder, distributionKey);
+
+        #endregion Postgres-xl Distribute By
+
         #region Obsolete
 
         /// <summary>
